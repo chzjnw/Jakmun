@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>영작 문장 조립 트레이너</title>
+<style>
+  :root {
+    --bg: #eef1ee;
+    --surface: #fbfaf7;
+    --surface-2: #f2f0ea;
+    --ink: #1f2937;
+    --ink-soft: #5b6472;
+    --ink-faint: #8a8f97;
+    --border: #d7d9d2;
+    --accent: #1f6f63;
+    --accent-ink: #ffffff;
+    --accent-soft: #dceee9;
+    --accent-soft-border: #a9cfc5;
+    --success: #2f7a4f;
+    --success-soft: #e2f0e5;
+    --error: #b3452f;
+    --error-soft: #f6e5e0;
+    --keycap-shadow: rgba(31, 41, 55, 0.16);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14181a;
+      --surface: #1d2225;
+      --surface-2: #23282b;
+      --ink: #eceeec;
+      --ink-soft: #aab0b3;
+      --ink-faint: #7d8386;
+      --border: #34393c;
+      --accent: #4fae9c;
+      --accent-ink: #0f1614;
+      --accent-soft: #1e3530;
+      --accent-soft-border: #3c6a5c;
+      --success: #5cb583;
+      --success-soft: #1c2f22;
+      --error: #d97a63;
+      --error-soft: #34211c;
+      --keycap-shadow: rgba(0, 0, 0, 0.5);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #14181a;
+    --surface: #1d2225;
+    --surface-2: #23282b;
+    --ink: #eceeec;
+    --ink-soft: #aab0b3;
+    --ink-faint: #7d8386;
+    --border: #34393c;
+    --accent: #4fae9c;
+    --accent-ink: #0f1614;
+    --accent-soft: #1e3530;
+    --accent-soft-border: #3c6a5c;
+    --success: #5cb583;
+    --success-soft: #1c2f22;
+    --error: #d97a63;
+    --error-soft: #34211c;
+    --keycap-shadow: rgba(0, 0, 0, 0.5);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo",
+      "Malgun Gothic", sans-serif;
+    min-height: 100vh;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .page {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 28px 18px 60px;
+  }
+
+  .hidden { display: none !important; }
+
+  /* ---------- shared bits ---------- */
+
+  .brand {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+  }
+
+  .subtitle {
+    color: var(--ink-soft);
+    font-size: 15px;
+    line-height: 1.6;
+    margin: 0 0 28px;
+  }
+
+  .btn {
+    appearance: none;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    padding: 13px 20px;
+    cursor: pointer;
+    transition: transform 0.06s ease, opacity 0.15s ease;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--accent-ink);
+    box-shadow: 0 3px 0 0 color-mix(in srgb, var(--accent) 70%, black 15%);
+  }
+  .btn-primary:active:not(:disabled) { box-shadow: 0 1px 0 0 color-mix(in srgb, var(--accent) 70%, black 15%); }
+
+  .btn-secondary {
+    background: var(--surface-2);
+    color: var(--ink);
+    border: 1px solid var(--border);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink-soft);
+    border: 1px solid var(--border);
+  }
+
+  .btn-large { width: 100%; padding: 15px 20px; font-size: 16px; }
+
+  .btn-link {
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    font-size: 13px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    padding: 6px 0;
+    font-family: inherit;
+  }
+
+  .btn-chip {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--ink-soft);
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .btn-chip.active { color: var(--accent); border-color: var(--accent-soft-border); background: var(--accent-soft); }
+
+  /* ---------- start screen ---------- */
+
+  .keycap-motif {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 22px;
+  }
+  .keycap-motif span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 34px;
+    padding: 0 14px;
+    border-radius: 7px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 0 0 var(--keycap-shadow);
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .keycap-motif span.on {
+    background: var(--accent-soft);
+    border-color: var(--accent-soft-border);
+    color: var(--accent);
+  }
+
+  .start-info {
+    font-size: 13px;
+    color: var(--ink-faint);
+    margin-bottom: 18px;
+    min-height: 18px;
+  }
+
+  .rules {
+    border-top: 1px solid var(--border);
+    margin-top: 26px;
+    padding-top: 18px;
+  }
+  .rules ul { margin: 0; padding-left: 18px; color: var(--ink-soft); font-size: 14px; line-height: 1.9; }
+
+  /* ---------- top bar / progress ---------- */
+
+  .top-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+  .progress-track {
+    flex: 1;
+    height: 3px;
+    background: var(--border);
+    position: relative;
+  }
+  .progress-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 0%;
+    background: var(--accent);
+    transition: width 0.35s ease;
+  }
+  .q-counter {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- card ---------- */
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px 20px 20px;
+  }
+
+  .kr-prompt {
+    font-size: 18px;
+    line-height: 1.65;
+    font-weight: 600;
+    margin-bottom: 14px;
+  }
+
+  .hint-row { display: flex; gap: 8px; margin-bottom: 12px; }
+
+  .hint-text {
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: var(--ink-soft);
+    background: var(--surface-2);
+    border-left: 3px solid var(--accent-soft-border);
+    padding: 10px 12px;
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 14px;
+  }
+
+  .answer-zone {
+    min-height: 64px;
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .answer-zone.shake { animation: shake 0.4s; }
+  @keyframes shake {
+    10%, 90% { transform: translateX(-2px); }
+    20%, 80% { transform: translateX(3px); }
+    30%, 50%, 70% { transform: translateX(-6px); }
+    40%, 60% { transform: translateX(6px); }
+  }
+
+  .answer-placeholder {
+    color: var(--ink-faint);
+    font-size: 14px;
+    padding: 8px 2px;
+  }
+
+  .tile-count {
+    font-size: 12px;
+    color: var(--ink-faint);
+    text-align: right;
+    margin-bottom: 18px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .feedback {
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 12px;
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 16px;
+    border-left: 3px solid transparent;
+  }
+  .feedback.correct { background: var(--success-soft); color: var(--success); border-left-color: var(--success); }
+  .feedback.incorrect { background: var(--error-soft); color: var(--error); border-left-color: var(--error); }
+  .feedback.reveal { background: var(--surface-2); color: var(--ink-soft); border-left-color: var(--border); }
+
+  .word-bank {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    margin-bottom: 18px;
+    min-height: 40px;
+  }
+
+  .tile {
+    font-family: inherit;
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom: 3px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 13px;
+    cursor: pointer;
+    transition: transform 0.05s ease;
+  }
+  .tile:active { transform: translateY(2px); border-bottom-width: 1px; }
+
+  .tile.placed {
+    background: var(--accent-soft);
+    border-color: var(--accent-soft-border);
+    border-bottom-color: var(--accent-soft-border);
+    color: var(--accent);
+  }
+
+  .tile.locked { cursor: default; }
+  .tile.locked:active { transform: none; }
+
+  .controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .controls.center { justify-content: center; }
+  .controls + .controls { margin-top: 10px; }
+
+  /* ---------- end screen ---------- */
+
+  .score-big {
+    font-size: 44px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 6px 0 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .score-msg { color: var(--ink-soft); font-size: 15px; margin: 0 0 22px; }
+
+  .review-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 26px; }
+  .review-item {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    background: var(--surface);
+  }
+  .review-item .kr { font-size: 13.5px; color: var(--ink-soft); margin-bottom: 6px; }
+  .review-item .en { font-size: 14.5px; font-weight: 600; line-height: 1.6; margin-bottom: 6px; }
+  .review-item .hint { font-size: 12.5px; color: var(--ink-faint); }
+
+  .end-actions { display: flex; flex-direction: column; gap: 10px; }
+
+  @media (max-width: 420px) {
+    .kr-prompt { font-size: 16.5px; }
+    .score-big { font-size: 36px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- START SCREEN -->
+  <section id="startScreen" class="screen">
+    <div class="keycap-motif">
+      <span>A</span><span class="on">variety</span><span>of</span><span>...</span>
+    </div>
+    <div class="brand">영작 문장 조립 트레이너</div>
+    <p class="subtitle">재시험 대비 10문제 · 뒤섞인 단어 조각을 순서대로 배치해서 문장을 완성하세요.</p>
+    <div class="start-info" id="bestScoreInfo"></div>
+    <button class="btn btn-primary btn-large" id="startBtn">시작하기</button>
+    <div class="rules">
+      <ul>
+        <li>한글 문장을 읽고, 아래 단어 조각을 순서대로 눌러 배치합니다.</li>
+        <li>배치한 단어를 다시 누르면 되돌릴 수 있습니다.</li>
+        <li>틀리면 다시 시도하거나 정답을 확인할 수 있습니다.</li>
+        <li>문법 힌트와 음성 듣기를 참고할 수 있습니다.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- GAME SCREEN -->
+  <section id="gameScreen" class="screen hidden">
+    <div class="top-bar">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="q-counter" id="qCounter">1 / 10</div>
+    </div>
+
+    <div class="card">
+      <div class="kr-prompt" id="krPrompt"></div>
+
+      <div class="hint-row">
+        <button class="btn-chip" id="hintToggleBtn">문법 힌트</button>
+        <button class="btn-chip" id="speakBtn">들어보기</button>
+      </div>
+      <div class="hint-text hidden" id="hintText"></div>
+
+      <div class="answer-zone" id="answerZone"></div>
+      <div class="tile-count" id="tileCount"></div>
+
+      <div id="feedback" class="feedback hidden"></div>
+
+      <div class="word-bank" id="wordBank"></div>
+
+      <div class="controls">
+        <button class="btn btn-ghost" id="clearBtn">전체 지우기</button>
+        <button class="btn btn-primary" id="checkBtn" disabled>확인</button>
+      </div>
+      <div class="controls center hidden" id="afterWrongControls">
+        <button class="btn-link" id="revealBtn">정답 보기</button>
+      </div>
+      <div class="controls hidden" id="nextControls">
+        <button class="btn btn-primary btn-large" id="nextBtn">다음 문제 →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- END SCREEN -->
+  <section id="endScreen" class="screen hidden">
+    <div class="brand" id="endTitle">완료!</div>
+    <div class="score-big" id="scoreBig"></div>
+    <p class="score-msg" id="scoreMsg"></p>
+    <div class="review-list" id="reviewList"></div>
+    <div class="end-actions">
+      <button class="btn btn-secondary hidden" id="retryMissedBtn">틀린 문제만 다시 풀기</button>
+      <button class="btn btn-primary" id="restartBtn">처음부터 다시 풀기</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var questions = [
+    {
+      korean: "박물관이 제공하는 다양한 교육 프로그램들이 이제 온라인으로 이용 가능하게 하며, 이는 더 많은 학생들이 집에서 역사를 탐구할 수 있게 해준다.",
+      hint: "목적격 관계대명사 that(the museum offers) + 5형식 allow + 계속적 용법 which",
+      answer: "A variety of educational programs that the museum offers are now available online, which allows more students to explore history at home."
+    },
+    {
+      korean: "이 식물원에서 재배되는 식물들의 다양성은 해마다 증가하며, 이는 방문객들이 서로 다른 종들을 비교할 기회를 더 많이 갖게 해준다.",
+      hint: "주격 관계대명사 that + 수동태 are grown + 계속적 용법 which + 4형식 give",
+      answer: "The variety of plants that are grown in this botanical garden increases every year, which gives visitors more opportunities to compare different species."
+    },
+    {
+      korean: "그 새 소프트웨어는 우리 팀이 수집하는 자료를 정리하는 일을 외부의 도움 없이 수행하기에 더 쉬워 보이게 만들었다.",
+      hint: "동명사 목적어(organizing~) + make+O+원형부정사(seem) + 비교급 easier",
+      answer: "The new software has made organizing the data that our team collects seem easier to do without outside help."
+    },
+    {
+      korean: "관리자가 주었던 지시 사항들이 신입 직원들이 따르기에 충분히 명확하지 않았기 때문에 여러 문제가 발생했다.",
+      hint: "목적격 관계대명사 that + 과거완료 had given + 자동사 arise(과거형 arose) + enough for A to B",
+      answer: "Several problems arose because the instructions that the manager had given were not clear enough for new employees to follow."
+    },
+    {
+      korean: "시간을 낭비될 수 있는 자원으로 여기는 서구인의 습관은 활동들을 그것들이 얼마나 생산적인지에 따라 평가하도록 사람들을 부추긴다.",
+      hint: "동명사 주어(looking upon A as B) + 조동사 수동태(can be wasted) + 5형식 encourage + 의문사 how절",
+      answer: "The Western habit of looking upon time as a resource that can be wasted encourages people to judge activities by how productive they are."
+    },
+    {
+      korean: "그 계획의 성공은 위원회가 제안한 변화들을 주민들이 받아들이는지에 달려있으며, 그들의 지지는 당연한 것으로 여겨져서는 안된다.",
+      hint: "명사절 접속사 whether + 목적격 관계대명사 that + 현재완료 has proposed + 수동태(should not be taken)",
+      answer: "The success of the plan depends on whether residents accept the changes that the committee has proposed, and their support should not be taken for granted."
+    },
+    {
+      korean: "교사들은 학생들이 그것(자신의 답)을 정답과 비교하기 전에 자신이 어떻게 그 답에 도달했는지 설명하는 것이 유용하다고 생각할 수 있다.",
+      hint: "가목적어 it + 진목적어(to explain) + 5형식 find + 의문사절 how + 시간 접속사 before",
+      answer: "Teachers may find it useful for students to explain how they reached an answer before they compare it with the correct one."
+    },
+    {
+      korean: "복잡한 생각을 배경지식이 거의 없는 사람들에게 전달하는 것은 단순히 어려운 단어를 더 쉬운 단어로 바꾸는 것 이상이 필요하다.",
+      hint: "동명사 주어(Communicating) + 주격 관계대명사 who + more than 비교 + 비교급 easier",
+      answer: "Communicating complex ideas to people who have little background knowledge requires more than simply replacing difficult words with easier ones."
+    },
+    {
+      korean: "오래된 도서관이 보수되었을 뿐만 아니라, 지역 주민들도 아이들이 무료로 빌릴 수 있는 책들을 기증했다.",
+      hint: "Not only A but also B 문두 도치(has the library been) + 현재완료 수동태 + 목적격 관계대명사 that",
+      answer: "Not only has the old library been renovated, but local residents also donated books that children can borrow for free."
+    },
+    {
+      korean: "언어와 사고 사이의 관계는, 그 교수가 오랫동안 관심을 가져 왔던, 쉬운 말로 설명하기 어려운 상태로 남아있다.",
+      hint: "계속적 용법 which + 현재완료(has long been concerned about) + remain + 형용사(difficult) + to부정사",
+      answer: "The relationship between language and thought, which the professor has long been concerned about, remains difficult to explain in simple terms."
+    }
+  ];
+
+  // ---------- state ----------
+  var activeIndices = [];
+  var pos = 0;
+  var score = 0;
+  var mistakeIdxSet = new Set();
+  var wasWrongThisQ = false;
+  var isRetryRound = false;
+  var tilesOriginal = [];
+  var currentBankTiles = [];
+  var currentAnswerOrder = [];
+  var locked = false;
+  var hintShown = false;
+
+  // ---------- elements ----------
+  var el = {};
+  [
+    "startScreen","gameScreen","endScreen",
+    "startBtn","bestScoreInfo",
+    "progressFill","qCounter",
+    "krPrompt","hintToggleBtn","speakBtn","hintText",
+    "answerZone","tileCount","feedback","wordBank",
+    "clearBtn","checkBtn","afterWrongControls","revealBtn","nextControls","nextBtn",
+    "endTitle","scoreBig","scoreMsg","reviewList","retryMissedBtn","restartBtn"
+  ].forEach(function (id) { el[id] = document.getElementById(id); });
+
+  // ---------- helpers ----------
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  function showScreen(name) {
+    el.startScreen.classList.toggle("hidden", name !== "start");
+    el.gameScreen.classList.toggle("hidden", name !== "game");
+    el.endScreen.classList.toggle("hidden", name !== "end");
+  }
+
+  function speak(text) {
+    try {
+      if (!("speechSynthesis" in window)) return;
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = "en-US";
+      u.rate = 0.95;
+      window.speechSynthesis.speak(u);
+    } catch (e) { /* no-op */ }
+  }
+
+  function readBestScore() {
+    try {
+      var v = window.localStorage.getItem("sentenceBuilderBest");
+      return v ? parseInt(v, 10) : null;
+    } catch (e) { return null; }
+  }
+
+  function writeBestScore(v) {
+    try { window.localStorage.setItem("sentenceBuilderBest", String(v)); } catch (e) { /* no-op */ }
+  }
+
+  function renderStartInfo() {
+    var best = readBestScore();
+    el.bestScoreInfo.textContent = (best !== null) ? ("최고 기록: " + best + " / 10") : "";
+  }
+
+  // ---------- game flow ----------
+  function startGame(indices, retry) {
+    activeIndices = indices;
+    pos = 0;
+    score = 0;
+    mistakeIdxSet = new Set();
+    isRetryRound = !!retry;
+    showScreen("game");
+    showQuestion();
+  }
+
+  function showQuestion() {
+    var qIdx = activeIndices[pos];
+    var q = questions[qIdx];
+    wasWrongThisQ = false;
+    locked = false;
+    hintShown = false;
+
+    var tokens = q.answer.split(" ");
+    tilesOriginal = tokens.map(function (t, i) { return { id: "t" + i + "_" + pos + "_" + qIdx, text: t }; });
+    currentBankTiles = shuffle(tilesOriginal);
+    currentAnswerOrder = [];
+
+    el.progressFill.style.width = (pos / activeIndices.length * 100) + "%";
+    el.qCounter.textContent = (pos + 1) + " / " + activeIndices.length;
+
+    el.krPrompt.textContent = q.korean;
+    el.hintText.textContent = q.hint;
+    el.hintText.classList.add("hidden");
+    el.hintToggleBtn.classList.remove("active");
+    el.hintToggleBtn.textContent = "문법 힌트";
+
+    el.feedback.classList.add("hidden");
+    el.feedback.className = "feedback hidden";
+    el.afterWrongControls.classList.add("hidden");
+    el.nextControls.classList.add("hidden");
+    el.clearBtn.disabled = false;
+    el.checkBtn.disabled = true;
+    el.wordBank.classList.remove("hidden");
+
+    renderBank();
+    renderAnswer();
+  }
+
+  function renderBank() {
+    el.wordBank.innerHTML = "";
+    currentBankTiles.forEach(function (tile) {
+      if (currentAnswerOrder.indexOf(tile.id) !== -1) return;
+      var b = document.createElement("button");
+      b.className = "tile";
+      b.type = "button";
+      b.textContent = tile.text;
+      b.addEventListener("click", function () { addTile(tile.id); });
+      el.wordBank.appendChild(b);
+    });
+  }
+
+  function renderAnswer() {
+    el.answerZone.innerHTML = "";
+    if (currentAnswerOrder.length === 0) {
+      var ph = document.createElement("div");
+      ph.className = "answer-placeholder";
+      ph.textContent = "여기에 단어를 순서대로 놓아보세요";
+      el.answerZone.appendChild(ph);
+    } else {
+      currentAnswerOrder.forEach(function (id) {
+        var tile = tilesOriginal.filter(function (t) { return t.id === id; })[0];
+        var b = document.createElement("button");
+        b.className = "tile placed" + (locked ? " locked" : "");
+        b.type = "button";
+        b.textContent = tile.text;
+        if (!locked) b.addEventListener("click", function () { removeTile(id); });
+        el.answerZone.appendChild(b);
+      });
+    }
+    el.tileCount.textContent = currentAnswerOrder.length + " / " + tilesOriginal.length + " 단어 배치됨";
+    el.checkBtn.disabled = currentAnswerOrder.length !== tilesOriginal.length;
+  }
+
+  function addTile(id) {
+    if (locked) return;
+    currentAnswerOrder.push(id);
+    renderBank();
+    renderAnswer();
+  }
+
+  function removeTile(id) {
+    if (locked) return;
+    var i = currentAnswerOrder.indexOf(id);
+    if (i !== -1) currentAnswerOrder.splice(i, 1);
+    renderBank();
+    renderAnswer();
+  }
+
+  function lockAnswer() {
+    locked = true;
+    el.checkBtn.disabled = true;
+    el.clearBtn.disabled = true;
+    el.wordBank.classList.add("hidden");
+    renderAnswer();
+  }
+
+  function checkAnswer() {
+    var qIdx = activeIndices[pos];
+    var q = questions[qIdx];
+    var built = currentAnswerOrder.map(function (id) {
+      return tilesOriginal.filter(function (t) { return t.id === id; })[0].text;
+    }).join(" ");
+
+    if (built === q.answer) {
+      if (!wasWrongThisQ) score++;
+      el.feedback.className = "feedback correct";
+      el.feedback.textContent = "정답이에요.";
+      el.feedback.classList.remove("hidden");
+      el.afterWrongControls.classList.add("hidden");
+      el.hintText.classList.remove("hidden");
+      hintShown = true;
+      lockAnswer();
+      el.nextControls.classList.remove("hidden");
+      speak(q.answer);
+    } else {
+      el.feedback.className = "feedback incorrect";
+      el.feedback.textContent = "순서가 맞지 않아요. 단어를 다시 눌러 배치를 바꿔보세요.";
+      el.feedback.classList.remove("hidden");
+      el.answerZone.classList.add("shake");
+      setTimeout(function () { el.answerZone.classList.remove("shake"); }, 400);
+      if (!wasWrongThisQ) {
+        wasWrongThisQ = true;
+        mistakeIdxSet.add(qIdx);
+        el.afterWrongControls.classList.remove("hidden");
+      }
+    }
+  }
+
+  function revealAnswer() {
+    var qIdx = activeIndices[pos];
+    var q = questions[qIdx];
+    currentAnswerOrder = tilesOriginal.map(function (t) { return t.id; });
+    el.feedback.className = "feedback reveal";
+    el.feedback.textContent = "정답을 확인했어요. 다음 문제에서 다시 도전해보세요.";
+    el.feedback.classList.remove("hidden");
+    el.afterWrongControls.classList.add("hidden");
+    el.hintText.classList.remove("hidden");
+    lockAnswer();
+    el.nextControls.classList.remove("hidden");
+    speak(q.answer);
+  }
+
+  function nextQuestion() {
+    pos++;
+    if (pos < activeIndices.length) {
+      showQuestion();
+    } else {
+      finishRound();
+    }
+  }
+
+  function scoreMessage(s, total, retry) {
+    var pct = total ? s / total : 1;
+    if (retry) return (s === total) ? "이제 완벽하게 익혔어요." : "조금 더 연습하면 완벽해질 거예요.";
+    if (pct === 1) return "완벽해요. 모든 문장을 한 번에 맞췄어요.";
+    if (pct >= 0.7) return "아주 잘했어요. 조금만 더 다듬으면 완벽해요.";
+    if (pct >= 0.4) return "좋은 시작이에요. 틀린 문제를 다시 풀어보세요.";
+    return "문법 힌트를 참고하며 틀린 문제를 다시 풀어보세요.";
+  }
+
+  function finishRound() {
+    el.progressFill.style.width = "100%";
+    showScreen("end");
+    var total = activeIndices.length;
+    el.endTitle.textContent = isRetryRound ? "복습 완료" : "완료";
+    el.scoreBig.textContent = score + " / " + total;
+    el.scoreMsg.textContent = scoreMessage(score, total, isRetryRound);
+
+    el.reviewList.innerHTML = "";
+    var missed = Array.from(mistakeIdxSet).sort(function (a, b) { return a - b; });
+    missed.forEach(function (idx) {
+      var q = questions[idx];
+      var item = document.createElement("div");
+      item.className = "review-item";
+      item.innerHTML =
+        '<div class="kr"></div><div class="en"></div><div class="hint"></div>';
+      item.querySelector(".kr").textContent = q.korean;
+      item.querySelector(".en").textContent = q.answer;
+      item.querySelector(".hint").textContent = q.hint;
+      el.reviewList.appendChild(item);
+    });
+
+    el.retryMissedBtn.classList.toggle("hidden", missed.length === 0);
+    el.retryMissedBtn.onclick = function () { startGame(missed, true); };
+
+    if (!isRetryRound) {
+      var best = readBestScore();
+      if (best === null || score > best) writeBestScore(score);
+    }
+    renderStartInfo();
+  }
+
+  // ---------- wire up ----------
+  el.startBtn.addEventListener("click", function () {
+    startGame(questions.map(function (_, i) { return i; }), false);
+  });
+
+  el.hintToggleBtn.addEventListener("click", function () {
+    hintShown = !hintShown;
+    el.hintText.classList.toggle("hidden", !hintShown);
+    el.hintToggleBtn.classList.toggle("active", hintShown);
+  });
+
+  el.speakBtn.addEventListener("click", function () {
+    var qIdx = activeIndices[pos];
+    speak(questions[qIdx].answer);
+  });
+
+  el.clearBtn.addEventListener("click", function () {
+    if (locked) return;
+    currentAnswerOrder = [];
+    renderBank();
+    renderAnswer();
+  });
+
+  el.checkBtn.addEventListener("click", checkAnswer);
+  el.revealBtn.addEventListener("click", revealAnswer);
+  el.nextBtn.addEventListener("click", nextQuestion);
+  el.restartBtn.addEventListener("click", function () {
+    startGame(questions.map(function (_, i) { return i; }), false);
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !el.gameScreen.classList.contains("hidden")) {
+      if (!el.checkBtn.disabled) checkAnswer();
+      else if (!el.nextControls.classList.contains("hidden")) nextQuestion();
+    }
+  });
+
+  if (!("speechSynthesis" in window)) {
+    el.speakBtn.style.display = "none";
+  }
+
+  renderStartInfo();
+  showScreen("start");
+})();
+</script>
+</body>
+</html>
