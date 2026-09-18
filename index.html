@@ -334,6 +334,17 @@
     border-color: var(--accent-soft-border);
     border-bottom-color: var(--accent-soft-border);
     color: var(--accent);
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .tile.placed.dragging {
+    opacity: 0.6;
+    transform: scale(1.05);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.22);
+    position: relative;
+    z-index: 5;
+    cursor: grabbing;
   }
 
   .tile.locked { cursor: default; }
@@ -393,7 +404,7 @@
     <div class="rules">
       <ul>
         <li>한글 문장을 읽고, 아래 단어 조각을 순서대로 눌러 배치합니다.</li>
-        <li>배치한 단어를 다시 누르면 되돌릴 수 있습니다.</li>
+        <li>배치한 단어를 다시 누르면 되돌리고, 끌어서 순서를 바꿀 수 있습니다.</li>
         <li>틀리면 다시 시도하거나 정답을 확인할 수 있습니다.</li>
         <li>문법 힌트와 음성 듣기를 참고할 수 있습니다.</li>
       </ul>
@@ -519,6 +530,7 @@
   var currentAnswerOrder = [];
   var locked = false;
   var hintShown = false;
+  var dragState = null;
 
   // ---------- elements ----------
   var el = {};
@@ -548,12 +560,41 @@
     el.endScreen.classList.toggle("hidden", name !== "end");
   }
 
+  var cachedVoices = [];
+  function refreshVoices() {
+    try { cachedVoices = window.speechSynthesis.getVoices() || []; } catch (e) { cachedVoices = []; }
+  }
+
+  function pickEnglishVoice() {
+    if (!cachedVoices.length) refreshVoices();
+    var exact = cachedVoices.filter(function (v) { return /^en-us$/i.test(v.lang); });
+    if (exact.length) return exact[0];
+    var anyEnglish = cachedVoices.filter(function (v) { return /en/i.test(v.lang); });
+    if (anyEnglish.length) return anyEnglish[0];
+    return null;
+  }
+
+  if ("speechSynthesis" in window) {
+    refreshVoices();
+    window.speechSynthesis.addEventListener("voiceschanged", refreshVoices);
+  } else {
+    el.speakBtn.style.display = "none";
+  }
+
   function speak(text) {
     try {
       if (!("speechSynthesis" in window)) return;
       window.speechSynthesis.cancel();
       var u = new SpeechSynthesisUtterance(text);
-      u.lang = "en-US";
+      var voice = pickEnglishVoice();
+      if (voice) {
+        u.voice = voice;
+        u.lang = voice.lang;
+      } else {
+        // No explicit English voice found in this browser/device — still
+        // attempt with the lang tag set rather than staying silent.
+        u.lang = "en-US";
+      }
       u.rate = 0.95;
       window.speechSynthesis.speak(u);
     } catch (e) { /* no-op */ }
@@ -646,7 +687,8 @@
         b.className = "tile placed" + (locked ? " locked" : "");
         b.type = "button";
         b.textContent = tile.text;
-        if (!locked) b.addEventListener("click", function () { removeTile(id); });
+        b.dataset.tileId = id;
+        if (!locked) attachDragHandlers(b, id);
         el.answerZone.appendChild(b);
       });
     }
@@ -667,6 +709,84 @@
     if (i !== -1) currentAnswerOrder.splice(i, 1);
     renderBank();
     renderAnswer();
+  }
+
+  function getPlacedTileElements() {
+    return Array.prototype.slice.call(el.answerZone.querySelectorAll(".tile.placed"));
+  }
+
+  function syncAnswerOrderFromDOM() {
+    currentAnswerOrder = getPlacedTileElements().map(function (node) { return node.dataset.tileId; });
+  }
+
+  function moveDraggedTile(clientX, clientY) {
+    var dragEl = dragState.el;
+    var others = getPlacedTileElements().filter(function (t) { return t !== dragEl; });
+    if (others.length === 0) return;
+    var closest = null, closestDist = Infinity, insertBefore = true;
+    others.forEach(function (t) {
+      var r = t.getBoundingClientRect();
+      var cx = r.left + r.width / 2;
+      var cy = r.top + r.height / 2;
+      var dist = Math.hypot(clientX - cx, clientY - cy);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closest = t;
+        insertBefore = clientX < cx;
+      }
+    });
+    if (!closest) return;
+    if (insertBefore) {
+      el.answerZone.insertBefore(dragEl, closest);
+    } else {
+      el.answerZone.insertBefore(dragEl, closest.nextSibling);
+    }
+    syncAnswerOrderFromDOM();
+  }
+
+  function attachDragHandlers(button, id) {
+    button.addEventListener("pointerdown", function (e) {
+      if (locked) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      if (e.cancelable) e.preventDefault();
+
+      dragState = { id: id, el: button, startX: e.clientX, startY: e.clientY, pointerId: e.pointerId, moved: false };
+      button.classList.add("dragging");
+
+      // Listen on document rather than the tile itself: once the tile moves
+      // even slightly, the pointer is no longer over it, so element-level
+      // listeners stop firing. Document-level listeners keep tracking the
+      // pointer no matter where it goes until it's released.
+      function onMove(ev) {
+        if (!dragState || ev.pointerId !== dragState.pointerId) return;
+        var dx = ev.clientX - dragState.startX;
+        var dy = ev.clientY - dragState.startY;
+        if (!dragState.moved && Math.hypot(dx, dy) > 6) dragState.moved = true;
+        if (!dragState.moved) return;
+        if (ev.cancelable) ev.preventDefault();
+        moveDraggedTile(ev.clientX, ev.clientY);
+      }
+
+      function onEnd(ev) {
+        if (!dragState || ev.pointerId !== dragState.pointerId) return;
+        var wasMoved = dragState.moved;
+        var draggedId = dragState.id;
+        button.classList.remove("dragging");
+        document.removeEventListener("pointermove", onMove);
+        document.removeEventListener("pointerup", onEnd);
+        document.removeEventListener("pointercancel", onEnd);
+        dragState = null;
+        if (!wasMoved) {
+          removeTile(draggedId);
+        } else {
+          renderAnswer();
+        }
+      }
+
+      document.addEventListener("pointermove", onMove);
+      document.addEventListener("pointerup", onEnd);
+      document.addEventListener("pointercancel", onEnd);
+    });
   }
 
   function lockAnswer() {
@@ -809,10 +929,6 @@
       else if (!el.nextControls.classList.contains("hidden")) nextQuestion();
     }
   });
-
-  if (!("speechSynthesis" in window)) {
-    el.speakBtn.style.display = "none";
-  }
 
   renderStartInfo();
   showScreen("start");
