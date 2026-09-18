@@ -745,47 +745,74 @@
   }
 
   function attachDragHandlers(button, id) {
-    button.addEventListener("pointerdown", function (e) {
-      if (locked) return;
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-      if (e.cancelable) e.preventDefault();
-
-      dragState = { id: id, el: button, startX: e.clientX, startY: e.clientY, pointerId: e.pointerId, moved: false };
+    function startDrag(x, y, pointerKey) {
+      dragState = { id: id, el: button, startX: x, startY: y, pointerKey: pointerKey, moved: false };
       button.classList.add("dragging");
+    }
 
-      // Listen on document rather than the tile itself: once the tile moves
-      // even slightly, the pointer is no longer over it, so element-level
-      // listeners stop firing. Document-level listeners keep tracking the
-      // pointer no matter where it goes until it's released.
-      function onMove(ev) {
-        if (!dragState || ev.pointerId !== dragState.pointerId) return;
-        var dx = ev.clientX - dragState.startX;
-        var dy = ev.clientY - dragState.startY;
-        if (!dragState.moved && Math.hypot(dx, dy) > 6) dragState.moved = true;
-        if (!dragState.moved) return;
-        if (ev.cancelable) ev.preventDefault();
-        moveDraggedTile(ev.clientX, ev.clientY);
+    function handleMove(x, y) {
+      if (!dragState || dragState.el !== button) return;
+      var dx = x - dragState.startX;
+      var dy = y - dragState.startY;
+      if (!dragState.moved && Math.hypot(dx, dy) > 6) dragState.moved = true;
+      if (!dragState.moved) return;
+      moveDraggedTile(x, y);
+    }
+
+    function endDrag() {
+      if (!dragState || dragState.el !== button) return;
+      var wasMoved = dragState.moved;
+      var draggedId = dragState.id;
+      button.classList.remove("dragging");
+      dragState = null;
+      if (!wasMoved) {
+        removeTile(draggedId);
+      } else {
+        renderAnswer();
       }
+    }
 
-      function onEnd(ev) {
-        if (!dragState || ev.pointerId !== dragState.pointerId) return;
-        var wasMoved = dragState.moved;
-        var draggedId = dragState.id;
-        button.classList.remove("dragging");
-        document.removeEventListener("pointermove", onMove);
-        document.removeEventListener("pointerup", onEnd);
-        document.removeEventListener("pointercancel", onEnd);
-        dragState = null;
-        if (!wasMoved) {
-          removeTile(draggedId);
-        } else {
-          renderAnswer();
-        }
+    // --- touch (iPad/iPhone/Android) ---
+    function onTouchMove(e) {
+      if (!dragState || dragState.el !== button) return;
+      var t = null;
+      for (var i = 0; i < e.touches.length; i++) {
+        if (e.touches[i].identifier === dragState.pointerKey) { t = e.touches[i]; break; }
       }
+      if (!t) return;
+      if (e.cancelable) e.preventDefault();
+      handleMove(t.clientX, t.clientY);
+    }
+    function onTouchEnd(e) {
+      document.removeEventListener("touchmove", onTouchMove, { passive: false });
+      document.removeEventListener("touchend", onTouchEnd);
+      document.removeEventListener("touchcancel", onTouchEnd);
+      endDrag();
+    }
+    button.addEventListener("touchstart", function (e) {
+      if (locked) return;
+      if (e.touches.length !== 1) return;
+      if (e.cancelable) e.preventDefault();
+      var t = e.touches[0];
+      startDrag(t.clientX, t.clientY, t.identifier);
+      document.addEventListener("touchmove", onTouchMove, { passive: false });
+      document.addEventListener("touchend", onTouchEnd);
+      document.addEventListener("touchcancel", onTouchEnd);
+    }, { passive: false });
 
-      document.addEventListener("pointermove", onMove);
-      document.addEventListener("pointerup", onEnd);
-      document.addEventListener("pointercancel", onEnd);
+    // --- mouse (desktop) ---
+    function onMouseMove(e) { handleMove(e.clientX, e.clientY); }
+    function onMouseUp() {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      endDrag();
+    }
+    button.addEventListener("mousedown", function (e) {
+      if (locked) return;
+      if (e.button !== 0) return;
+      startDrag(e.clientX, e.clientY, "mouse");
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
     });
   }
 
